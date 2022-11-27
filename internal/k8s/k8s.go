@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/fraima/cluster-machine-approver/internal/controller"
+	"go.uber.org/zap"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -52,7 +53,7 @@ func (s *k8s) Stop() {
 	}
 }
 
-func (s *k8s) CertificateSigningRequestsChan() (<-chan controller.CertificateSigningRequest, error) {
+func (s *k8s) CertificateSigningRequestsChan() (<-chan *controller.CertificateSigningRequest, error) {
 	w, err := s.csr.Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -62,14 +63,18 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan controller.CertificateSig
 	s.watchers = append(s.watchers, w)
 	s.lock.Unlock()
 
-	rChan := make(chan controller.CertificateSigningRequest)
-
+	rChan := make(chan *controller.CertificateSigningRequest)
 	go func() {
 		for event := range w.ResultChan() {
-			rChan <- controller.CertificateSigningRequest(event.Object.(*certificatesv1.CertificateSigningRequest))
+			obj, ok := event.Object.(*certificatesv1.CertificateSigningRequest)
+			if !ok {
+				zap.L().Warn("converting", zap.Any("event", event))
+				continue
+			}
+			req := controller.CertificateSigningRequest(obj)
+			rChan <- &req
 		}
 	}()
-
 	return rChan, err
 }
 

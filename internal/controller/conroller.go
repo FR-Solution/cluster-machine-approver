@@ -2,16 +2,23 @@ package controller
 
 import (
 	"context"
-	"crypto/x509"
+
+	"go.uber.org/zap"
 )
 
 type k8s interface {
-	CertificateSigningRequestsChan() (<-chan CertificateSigningRequest, error)
+	CertificateSigningRequestsChan() (<-chan *CertificateSigningRequest, error)
 	Apply(ctx context.Context, r *CertificateSigningRequest) error
 }
 
 type controller struct {
 	k8s k8s
+}
+
+func New(k8s k8s) *controller {
+	return &controller{
+		k8s: k8s,
+	}
 }
 
 func (s *controller) Start() error {
@@ -20,8 +27,20 @@ func (s *controller) Start() error {
 		return err
 	}
 	for r := range requestChan {
-		csr, _ := x509.ParseCertificateRequest(r.Spec.Request)
-		csr.IPAddresses
+		isVerification, err := s.verification(r)
+		if err != nil {
+			zap.L().Error("verification request", zap.Error(err))
+		}
+		if isVerification {
+			err := s.k8s.Apply(context.TODO(), r)
+			if err != nil {
+				zap.L().Error("apply request", zap.Error(err))
+			}
+		}
 	}
+	return nil
+}
 
+func (s *controller) verification(req *CertificateSigningRequest) (bool, error) {
+	return true, nil
 }
