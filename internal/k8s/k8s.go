@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/certificates/v1"
-	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 type k8s struct {
@@ -21,15 +21,17 @@ type k8s struct {
 	watchers []watch.Interface
 }
 
-func Connect(kubeconfigPath string) (*k8s, error) {
-	configBytes, err := os.ReadFile(kubeconfigPath)
+func Connect(kubeHost, kubeTokenFile string) (*k8s, error) {
+	token, err := os.ReadFile(kubeTokenFile)
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := clientcmd.RESTConfigFromKubeConfig(configBytes)
-	if err != nil {
-		return nil, err
+	config := &rest.Config{
+		Host:            kubeHost,
+		APIPath:         "/",
+		BearerToken:     string(token),
+		TLSClientConfig: rest.TLSClientConfig{Insecure: true},
 	}
 
 	client, err := kubernetes.NewForConfig(config)

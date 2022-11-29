@@ -1,21 +1,29 @@
 package main
 
 import (
-	"flag"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/kelseyhightower/envconfig"
+	"go.uber.org/zap"
+
 	"github.com/fraima/cluster-machine-approver/internal/cloud/yandex"
-	"github.com/fraima/cluster-machine-approver/internal/config"
 	"github.com/fraima/cluster-machine-approver/internal/controller"
 	"github.com/fraima/cluster-machine-approver/internal/k8s"
-	"go.uber.org/zap"
 )
 
 var (
 	Version = "undefined"
 )
+
+type configuration struct {
+	KubeHost           string `envconfig:"KUBE_HOST" required:"true"`
+	KubeTokenFile      string `envconfig:"KUBE_TOKEN_FILE" default:"/run/secrets/kubernetes.io/serviceaccount/token"`
+	AIMJson            []byte `envconfig:"YANDEX_AIM_JSON" required:"true"`
+	FolderID           string `envconfig:"YANDEX_FOLDER_ID" required:"true"`
+	InstanceNameLayout string `envconfig:"INSTANCE_NAME_LAYOUT" required:"true"`
+}
 
 func main() {
 	loggerConfig := zap.NewProductionConfig()
@@ -26,18 +34,17 @@ func main() {
 	}
 	zap.ReplaceGlobals(logger)
 
-	var configPath string
-	flag.StringVar(&configPath, "config", "", "path to config file")
-	flag.Parse()
-
-	cfg, err := config.Get(configPath)
-	if err != nil {
-		zap.L().Fatal("read configuration", zap.Error(err))
+	var cfg configuration
+	if err := envconfig.Process("", &cfg); err != nil {
+		zap.L().Panic("init configuration", zap.Error(err))
 	}
 
 	zap.L().Debug("configuration", zap.Any("config", cfg), zap.String("version", Version))
 
-	k, err := k8s.Connect(cfg.KubeconfigPath)
+	k, err := k8s.Connect(
+		cfg.KubeHost,
+		cfg.KubeTokenFile,
+	)
 	if err != nil {
 		zap.L().Fatal("connect k8s", zap.Error(err))
 	}
