@@ -7,7 +7,6 @@ require (
 	github.com/yandex-cloud/go-genproto v0.0.0-20221121121243-292994614e1b
 	github.com/yandex-cloud/go-sdk v0.0.0-20221121122038-e3352384a86d
 	go.uber.org/zap v1.23.0
-	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.25.4
 	k8s.io/apimachinery v0.25.4
 	k8s.io/client-go v0.25.4
@@ -49,6 +48,7 @@ require (
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
