@@ -6,12 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.uber.org/zap"
-
 	"github.com/fraima/cluster-machine-approver/internal/cloud/yandex"
 	"github.com/fraima/cluster-machine-approver/internal/config"
 	"github.com/fraima/cluster-machine-approver/internal/controller"
 	"github.com/fraima/cluster-machine-approver/internal/k8s"
+	"go.uber.org/zap"
 )
 
 var (
