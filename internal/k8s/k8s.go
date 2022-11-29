@@ -5,7 +5,6 @@ import (
 	"os"
 	"sync"
 
-	"github.com/fraima/cluster-machine-approver/internal/controller"
 	"go.uber.org/zap"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +21,7 @@ type k8s struct {
 	watchers []watch.Interface
 }
 
-func New(kubeconfigPath string) (*k8s, error) {
+func Connect(kubeconfigPath string) (*k8s, error) {
 	configBytes, err := os.ReadFile(kubeconfigPath)
 	if err != nil {
 		return nil, err
@@ -53,7 +52,7 @@ func (s *k8s) Stop() {
 	}
 }
 
-func (s *k8s) CertificateSigningRequestsChan() (<-chan *controller.CertificateSigningRequest, error) {
+func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.CertificateSigningRequest, error) {
 	w, err := s.csr.Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -63,7 +62,7 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan *controller.CertificateSi
 	s.watchers = append(s.watchers, w)
 	s.lock.Unlock()
 
-	rChan := make(chan *controller.CertificateSigningRequest)
+	rChan := make(chan *certificatesv1.CertificateSigningRequest)
 	go func() {
 		for event := range w.ResultChan() {
 			obj, ok := event.Object.(*certificatesv1.CertificateSigningRequest)
@@ -71,8 +70,7 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan *controller.CertificateSi
 				zap.L().Warn("converting", zap.Any("event", event))
 				continue
 			}
-			req := controller.CertificateSigningRequest(obj)
-			rChan <- &req
+			rChan <- obj
 		}
 	}()
 	return rChan, err
