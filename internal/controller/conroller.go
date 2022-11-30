@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net"
 	"regexp"
 
@@ -73,7 +74,12 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 		return false, err
 	}
 
-	vmIPs, err := s.cloud.GetInstanceAddresses(context.TODO(), s.getVirtualMachineName(certRequest.Subject.CommonName))
+	virtualMachineName, err := s.getVirtualMachineName(certRequest.Subject.CommonName)
+	if err != nil {
+		return false, err
+	}
+
+	vmIPs, err := s.cloud.GetInstanceAddresses(context.TODO(), virtualMachineName)
 	if err != nil {
 		return false, err
 	}
@@ -86,8 +92,12 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 	return true, nil
 }
 
-func (s *controller) getVirtualMachineName(commonName string) string {
-	return s.rInstanceName.FindString(commonName)
+func (s *controller) getVirtualMachineName(commonName string) (string, error) {
+	submatch := s.rInstanceName.FindStringSubmatch(commonName)
+	if submatch == nil {
+		return "", fmt.Errorf("virtual machine name in %s not found", commonName)
+	}
+	return submatch[1], nil
 }
 
 func parseCertificateRequest(data []byte) (*x509.CertificateRequest, error) {

@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/stretchr/testify v1.8.0
 	github.com/yandex-cloud/go-genproto v0.0.0-20221121121243-292994614e1b
 	github.com/yandex-cloud/go-sdk v0.0.0-20221121122038-e3352384a86d
 	go.uber.org/zap v1.23.0
@@ -35,6 +36,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
