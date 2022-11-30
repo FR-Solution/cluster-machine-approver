@@ -9,7 +9,7 @@ module = $(shell go list -m)
 
 build-and-push:
 	docker build -t $(tag) --build-arg VERSION=$(release) --build-arg PROJECT=$(project) -f Dockerfile .
-	docker image push $(tag)
+	# docker image push $(tag)
 	echo $(tag)
 
 formatting:
