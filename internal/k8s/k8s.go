@@ -7,6 +7,7 @@ import (
 
 	"go.uber.org/zap"
 	certificatesv1 "k8s.io/api/certificates/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -80,6 +81,7 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.Certifica
 
 func (s *k8s) Apply(ctx context.Context, r *certificatesv1.CertificateSigningRequest) error {
 	r.Status.Conditions = append(r.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
+		Status:         corev1.ConditionTrue,
 		Type:           certificatesv1.CertificateApproved,
 		Reason:         "User activation",
 		Message:        "This CSR was approved",
