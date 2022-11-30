@@ -57,8 +57,14 @@ func (s *cloud) GetInstanceAddresses(ctx context.Context, instanceName string) (
 
 func extractAddresses(instance *compute.Instance) []net.IP {
 	var nodeAddresses []net.IP
+
 	for _, iface := range instance.NetworkInterfaces {
-		nodeAddresses = append(nodeAddresses, net.ParseIP(iface.PrimaryV4Address.Address))
+		if iface.GetPrimaryV4Address() != nil {
+			nodeAddresses = append(nodeAddresses, net.ParseIP(iface.PrimaryV4Address.Address))
+			if iface.GetPrimaryV4Address().GetOneToOneNat() != nil {
+				nodeAddresses = append(nodeAddresses, net.ParseIP(iface.PrimaryV4Address.Address))
+			}
+		}
 	}
 	return nodeAddresses
 }

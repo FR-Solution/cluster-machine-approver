@@ -78,8 +78,6 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 		return false, err
 	}
 
-	zap.L().Debug("verification", zap.Any("csr", csr))
-
 	virtualMachineName, err := s.getVirtualMachineName(csr.Subject.CommonName)
 	if err != nil {
 		return false, err
@@ -91,8 +89,6 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 	if err != nil {
 		return false, err
 	}
-
-	zap.L().Debug("verification", zap.Any("virtual machine addresses", vmIPs), zap.Any("csr addresses", csr.IPAddresses))
 
 	for _, ip := range csr.IPAddresses {
 		if !ipIsExist(ip, vmIPs) {
