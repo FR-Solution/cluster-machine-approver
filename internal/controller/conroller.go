@@ -50,10 +50,14 @@ func (s *controller) Start() error {
 		return err
 	}
 	for r := range requestChan {
+		zap.L().Debug("new certificate signing request", zap.Any("request", r))
+
 		isVerification, err := s.verification(r)
 		if err != nil {
 			zap.L().Error("verification request", zap.Error(err))
 		}
+
+		zap.L().Debug("verification request", zap.Bool("result", isVerification))
 		if isVerification {
 			err := s.k8s.Apply(context.TODO(), r)
 			if err != nil {
@@ -69,22 +73,28 @@ func (s *controller) Stop() {
 }
 
 func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, error) {
-	certRequest, err := parseCertificateRequest(req.Spec.Request)
+	csr, err := parseCertificateRequest(req.Spec.Request)
 	if err != nil {
 		return false, err
 	}
 
-	virtualMachineName, err := s.getVirtualMachineName(certRequest.Subject.CommonName)
+	zap.L().Debug("verification", zap.Any("csr", csr))
+
+	virtualMachineName, err := s.getVirtualMachineName(csr.Subject.CommonName)
 	if err != nil {
 		return false, err
 	}
+
+	zap.L().Debug("verification", zap.Any("virtual machine name", virtualMachineName))
 
 	vmIPs, err := s.cloud.GetInstanceAddresses(context.TODO(), virtualMachineName)
 	if err != nil {
 		return false, err
 	}
 
-	for _, ip := range certRequest.IPAddresses {
+	zap.L().Debug("verification", zap.Any("virtual machine addresses", vmIPs), zap.Any("csr addresses", csr.IPAddresses))
+
+	for _, ip := range csr.IPAddresses {
 		if !ipIsExist(ip, vmIPs) {
 			return false, nil
 		}
@@ -92,10 +102,10 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 	return true, nil
 }
 
-func (s *controller) getVirtualMachineName(commonName string) (string, error) {
-	submatch := s.rInstanceName.FindStringSubmatch(commonName)
+func (s *controller) getVirtualMachineName(str string) (string, error) {
+	submatch := s.rInstanceName.FindStringSubmatch(str)
 	if submatch == nil {
-		return "", fmt.Errorf("virtual machine name in %s not found", commonName)
+		return "", fmt.Errorf("virtual machine name in %s not found", str)
 	}
 	return submatch[1], nil
 }
