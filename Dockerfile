@@ -18,4 +18,4 @@ FROM alpine:3.15.0
 
 COPY --from=builder /go/bin/${PROJECT} /usr/local/bin/app
 
-ENTRYPOINT ["app"]
+ENTRYPOINT ["/usr/local/bin/app"]
