@@ -96,6 +96,7 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 
 	for _, ip := range csr.IPAddresses {
 		if !ipIsExist(ip, vmIPs) {
+			zap.L().Debug("ip is not found in vm ips", zap.String("ip", ip.String()))
 			return false, nil
 		}
 	}
