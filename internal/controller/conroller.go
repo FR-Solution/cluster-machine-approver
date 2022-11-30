@@ -33,11 +33,14 @@ func New(
 	cloud cloud,
 
 	instanceNameLayout string,
-) *controller {
-	return &controller{
+) (ctrl *controller, err error) {
+	ctrl = &controller{
 		k8s:   k8s,
 		cloud: cloud,
 	}
+
+	ctrl.rInstanceName, err = regexp.Compile(instanceNameLayout)
+	return ctrl, err
 }
 
 func (s *controller) Start() error {

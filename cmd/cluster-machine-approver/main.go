@@ -54,7 +54,10 @@ func main() {
 		zap.L().Fatal("connect yandex cloude", zap.Error(err))
 	}
 
-	ctrl := controller.New(k, cloud, cfg.InstanceNameLayout)
+	ctrl, err := controller.New(k, cloud, cfg.InstanceNameLayout)
+	if err != nil {
+		zap.L().Fatal("init controller", zap.Error(err))
+	}
 
 	go func() {
 		err := ctrl.Start()
