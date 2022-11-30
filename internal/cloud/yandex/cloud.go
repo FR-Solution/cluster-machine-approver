@@ -60,9 +60,9 @@ func extractAddresses(instance *compute.Instance) []net.IP {
 
 	for _, iface := range instance.NetworkInterfaces {
 		if iface.GetPrimaryV4Address() != nil {
-			nodeAddresses = append(nodeAddresses, net.ParseIP(iface.PrimaryV4Address.Address))
+			nodeAddresses = append(nodeAddresses, net.ParseIP(iface.GetPrimaryV4Address().Address))
 			if iface.GetPrimaryV4Address().GetOneToOneNat() != nil {
-				nodeAddresses = append(nodeAddresses, net.ParseIP(iface.PrimaryV4Address.Address))
+				nodeAddresses = append(nodeAddresses, net.ParseIP(iface.GetPrimaryV4Address().GetOneToOneNat().Address))
 			}
 		}
 	}
