@@ -18,7 +18,8 @@ type cloud interface {
 
 type k8s interface {
 	CertificateSigningRequestsChan() (<-chan *v1.CertificateSigningRequest, error)
-	Apply(ctx context.Context, r *v1.CertificateSigningRequest) error
+	Approve(ctx context.Context, r *v1.CertificateSigningRequest) error
+	Deny(ctx context.Context, r *v1.CertificateSigningRequest) error
 	Stop()
 }
 
@@ -50,18 +51,25 @@ func (s *controller) Start() error {
 		return err
 	}
 	for r := range requestChan {
-		zap.L().Debug("new certificate signing request", zap.Any("request", r))
+		logger := zap.L().With(zap.String("name", r.Name))
+		logger.Debug("new_csr")
 
-		isVerification, err := s.verification(r)
+		isVerification, err := s.verification(r, logger)
 		if err != nil {
-			zap.L().Error("verification request", zap.Error(err))
+			logger.Error("verification request", zap.Error(err))
 		}
 
-		zap.L().Debug("verification request", zap.Bool("result", isVerification))
 		if isVerification {
-			err := s.k8s.Apply(context.TODO(), r)
+			logger.Debug("approve_request")
+			err := s.k8s.Approve(context.TODO(), r)
 			if err != nil {
-				zap.L().Error("apply request", zap.Error(err))
+				logger.Error("approve_request", zap.Error(err))
+			}
+		} else {
+			logger.Debug("deny_request", zap.String("name", r.Name))
+			err := s.k8s.Deny(context.TODO(), r)
+			if err != nil {
+				logger.Error("deny_request", zap.Error(err))
 			}
 		}
 	}
@@ -72,7 +80,7 @@ func (s *controller) Stop() {
 	s.k8s.Stop()
 }
 
-func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, error) {
+func (s *controller) verification(req *v1.CertificateSigningRequest, logger *zap.Logger) (bool, error) {
 	csr, err := parseCertificateRequest(req.Spec.Request)
 	if err != nil {
 		return false, err
@@ -83,7 +91,7 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 		return false, err
 	}
 
-	zap.L().Debug("verification", zap.Any("virtual machine name", virtualMachineName))
+	logger.Debug("verification", zap.Any("vm_name", virtualMachineName))
 
 	vmIPs, err := s.cloud.GetInstanceAddresses(context.TODO(), virtualMachineName)
 	if err != nil {
@@ -92,7 +100,7 @@ func (s *controller) verification(req *v1.CertificateSigningRequest) (bool, erro
 
 	for _, ip := range csr.IPAddresses {
 		if !ipIsExist(ip, vmIPs) {
-			zap.L().Debug("ip is not found in vm ips", zap.String("ip", ip.String()))
+			logger.Debug("ip_check", zap.String("result", "ip is not found in vm ips"), zap.String("ip", ip.String()))
 			return false, nil
 		}
 	}

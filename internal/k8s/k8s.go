@@ -79,12 +79,25 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.Certifica
 	return rChan, err
 }
 
-func (s *k8s) Apply(ctx context.Context, r *certificatesv1.CertificateSigningRequest) error {
+func (s *k8s) Approve(ctx context.Context, r *certificatesv1.CertificateSigningRequest) error {
 	r.Status.Conditions = append(r.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
 		Status:         corev1.ConditionTrue,
 		Type:           certificatesv1.CertificateApproved,
 		Reason:         "User activation",
 		Message:        "This CSR was approved",
+		LastUpdateTime: metav1.Now(),
+	})
+
+	_, err := s.csr.UpdateApproval(ctx, r.Name, r, metav1.UpdateOptions{})
+	return err
+}
+
+func (s *k8s) Deny(ctx context.Context, r *certificatesv1.CertificateSigningRequest) error {
+	r.Status.Conditions = append(r.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
+		Status:         corev1.ConditionTrue,
+		Type:           certificatesv1.CertificateDenied,
+		Reason:         "User activation",
+		Message:        "This CSR was denied by kubectl certificate deny",
 		LastUpdateTime: metav1.Now(),
 	})
 
