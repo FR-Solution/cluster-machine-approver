@@ -22,7 +22,7 @@ type configuration struct {
 	KubeTokenFile      string `envconfig:"KUBE_TOKEN_FILE" default:"/run/secrets/kubernetes.io/serviceaccount/token"`
 	AIMJson            []byte `envconfig:"YANDEX_AIM_JSON" required:"true"`
 	FolderID           string `envconfig:"YANDEX_FOLDER_ID" required:"true"`
-	InstanceNameLayout string `envconfig:"INSTANCE_NAME_LAYOUT" required:"true"`
+	InstanceNameLayout string `envconfig:"INSTANCE_NAME_LAYOUT" default:"system:node:(.[^ ]*)"`
 }
 
 func main() {

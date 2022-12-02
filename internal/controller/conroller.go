@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/certificates/v1"
@@ -59,19 +60,21 @@ func (s *controller) Start() error {
 			logger.Error("verification request", zap.Error(err))
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		if isVerification {
 			logger.Debug("approve_request")
-			err := s.k8s.Approve(context.TODO(), r)
+			err := s.k8s.Approve(ctx, r)
 			if err != nil {
 				logger.Error("approve_request", zap.Error(err))
 			}
 		} else {
 			logger.Debug("deny_request", zap.String("name", r.Name))
-			err := s.k8s.Deny(context.TODO(), r)
+			err := s.k8s.Deny(ctx, r)
 			if err != nil {
 				logger.Error("deny_request", zap.Error(err))
 			}
 		}
+		cancel()
 	}
 	return nil
 }
@@ -93,7 +96,10 @@ func (s *controller) verification(req *v1.CertificateSigningRequest, logger *zap
 
 	logger.Debug("verification", zap.Any("vm_name", virtualMachineName))
 
-	vmIPs, err := s.cloud.GetInstanceAddresses(context.TODO(), virtualMachineName)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	vmIPs, err := s.cloud.GetInstanceAddresses(ctx, virtualMachineName)
 	if err != nil {
 		return false, err
 	}
