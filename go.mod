@@ -3,6 +3,7 @@ module github.com/fraima/cluster-machine-approver
 go 1.19
 
 require (
+	github.com/google/uuid v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/stretchr/testify v1.8.0
 	github.com/yandex-cloud/go-genproto v0.0.0-20221121121243-292994614e1b

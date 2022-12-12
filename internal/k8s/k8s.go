@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,8 +19,7 @@ import (
 type k8s struct {
 	csr v1.CertificateSigningRequestInterface
 
-	lock     sync.Mutex
-	watchers []watch.Interface
+	watchers sync.Map
 }
 
 func Connect(kubeHost, kubeTokenFile string) (*k8s, error) {
@@ -47,27 +47,23 @@ func Connect(kubeHost, kubeTokenFile string) (*k8s, error) {
 }
 
 func (s *k8s) Stop() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	for _, w := range s.watchers {
-		w.Stop()
-	}
+	s.watchers.Range(func(_, value any) bool {
+		watcher := value.(watch.Interface)
+		watcher.Stop()
+		return true
+	})
 }
 
 func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.CertificateSigningRequest, error) {
-	w, err := s.csr.Watch(context.TODO(), metav1.ListOptions{})
+	watcher, err := s.csr.Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-
-	s.lock.Lock()
-	s.watchers = append(s.watchers, w)
-	s.lock.Unlock()
+	s.watchers.Store(uuid.New().String(), watcher)
 
 	rChan := make(chan *certificatesv1.CertificateSigningRequest)
 	go func() {
-		for event := range w.ResultChan() {
+		for event := range watcher.ResultChan() {
 			obj, ok := event.Object.(*certificatesv1.CertificateSigningRequest)
 			if !ok {
 				zap.L().Warn("converting", zap.Any("event", event))
