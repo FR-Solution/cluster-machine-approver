@@ -60,7 +60,7 @@ func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.Certifica
 		return nil, err
 	}
 	rChan := make(chan *certificatesv1.CertificateSigningRequest)
-	s.watchers.Store(uuid.New().String(), stopWatcher(watcher.Stop, rChan))
+	s.watchers.Store(uuid.New().String(), stopWatcher(rChan, watcher.Stop))
 
 	go func() {
 		for event := range watcher.ResultChan() {
@@ -101,9 +101,11 @@ func (s *k8s) Deny(ctx context.Context, r *certificatesv1.CertificateSigningRequ
 	return err
 }
 
-func stopWatcher(stopWatcher func(), rChan chan *certificatesv1.CertificateSigningRequest) func() {
+func stopWatcher(rChan chan *certificatesv1.CertificateSigningRequest, stopWatchers ...func()) func() {
 	return func() {
-		stopWatcher()
+		for _, sw := range stopWatchers {
+			sw()
+		}
 		close(rChan)
 	}
 }
