@@ -1,4 +1,4 @@
-package controller
+package controller_test
 
 import (
 	"crypto/rand"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/certificates/v1"
 
+	"github.com/fraima/cluster-machine-approver/internal/controller"
 	"github.com/fraima/cluster-machine-approver/internal/mocks"
 )
 
@@ -33,8 +34,9 @@ func TestApprove(t *testing.T) {
 	testCertificateSigningRequest := testCSR(t, testCommonName, testIPSet)
 
 	k8sMock := mocks.NewK8s(t)
-	certificateSigningRequestsChan := make(chan *v1.CertificateSigningRequest)
-	var certificateSigningRequestsOutChan <-chan *v1.CertificateSigningRequest = certificateSigningRequestsChan
+	certificateSigningRequestsChan := make(chan controller.Event)
+	var certificateSigningRequestsOutChan <-chan controller.Event = certificateSigningRequestsChan
+
 	k8sMock.On("CertificateSigningRequestsChan").
 		Return(certificateSigningRequestsOutChan, nilError)
 
@@ -53,7 +55,7 @@ func TestApprove(t *testing.T) {
 	cloudMock.On("GetInstanceAddresses", testVirtualMachineName).
 		Return(testApproveIPSet, nilError)
 
-	ctrl, err := New(
+	ctrl, err := controller.New(
 		k8sMock,
 		cloudMock,
 		testRegexp,
@@ -84,11 +86,11 @@ func TestDeny(t *testing.T) {
 	testCertificateSigningRequest := testCSR(t, testCommonName, testIPSet)
 
 	k8sMock := mocks.NewK8s(t)
-	certificateSigningRequestsChan := make(chan *v1.CertificateSigningRequest)
-	var certificateSigningRequestsOutChan <-chan *v1.CertificateSigningRequest = certificateSigningRequestsChan
+	certificateSigningRequestsChan := make(chan controller.Event)
+	var certificateSigningRequestsOutChan <-chan controller.Event = certificateSigningRequestsChan
+
 	k8sMock.On("CertificateSigningRequestsChan").
 		Return(certificateSigningRequestsOutChan, nilError)
-
 	k8sMock.On("Deny", testCertificateSigningRequest).
 		Return(nilError)
 
@@ -103,7 +105,7 @@ func TestDeny(t *testing.T) {
 	cloudMock.On("GetInstanceAddresses", testVirtualMachineName).
 		Return(testDenyIPSet, nilError)
 
-	ctrl, err := New(
+	ctrl, err := controller.New(
 		k8sMock,
 		cloudMock,
 		testRegexp,
@@ -118,59 +120,6 @@ func TestDeny(t *testing.T) {
 		certificateSigningRequestsChan <- testCertificateSigningRequest
 
 		close(certificateSigningRequestsChan)
-	})
-}
-
-func TestGetVirtualMachineName(t *testing.T) {
-	testRegexp := "system:node:(.[^ ]*)"
-
-	ctrl, err := New(
-		nil,
-		nil,
-		testRegexp,
-	)
-	require.NoError(t, err)
-
-	t.Run("success test", func(t *testing.T) {
-		testStr := "system:node:worker-1-cluster-2"
-		expectedName := "worker-1-cluster-2"
-
-		actualName, err := ctrl.getVirtualMachineName(testStr)
-		require.NoError(t, err)
-		require.Equal(t, expectedName, actualName)
-	})
-
-	t.Run("failed test", func(t *testing.T) {
-		testStr := "string:without-name"
-		expectedName := ""
-		expectedErr := fmt.Errorf("virtual machine name in %s not found", testStr)
-
-		actualName, actualErr := ctrl.getVirtualMachineName(testStr)
-		require.Equal(t, expectedErr, actualErr)
-		require.Equal(t, expectedName, actualName)
-	})
-}
-
-func TestIpIsExist(t *testing.T) {
-	ipSet := []net.IP{
-		net.ParseIP("123.123.123.123"),
-		net.ParseIP("124.124.124.124"),
-		net.ParseIP("125.125.125.125"),
-		net.ParseIP("126.126.126.126"),
-	}
-
-	t.Run("success test", func(t *testing.T) {
-		testIP := net.ParseIP("123.123.123.123")
-
-		isExist := ipIsExist(testIP, ipSet)
-		require.True(t, isExist)
-	})
-
-	t.Run("failed test", func(t *testing.T) {
-		testIP := net.ParseIP("128.128.128.128")
-
-		isExist := ipIsExist(testIP, ipSet)
-		require.False(t, isExist)
 	})
 }
 

@@ -5,12 +5,12 @@ import (
 	"os"
 	"sync"
 
+	"github.com/fraima/cluster-machine-approver/internal/controller"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/certificates/v1"
 	"k8s.io/client-go/rest"
@@ -48,18 +48,18 @@ func Connect(kubeHost, kubeTokenFile string) (*k8s, error) {
 
 func (s *k8s) Stop() {
 	s.watchers.Range(func(_, value any) bool {
-		watcher := value.(watch.Interface)
-		watcher.Stop()
+		watcherStop := value.(func())
+		watcherStop()
 		return true
 	})
 }
 
-func (s *k8s) CertificateSigningRequestsChan() (<-chan *certificatesv1.CertificateSigningRequest, error) {
+func (s *k8s) CertificateSigningRequestsChan() (<-chan controller.Event, error) {
 	watcher, err := s.csr.Watch(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	rChan := make(chan *certificatesv1.CertificateSigningRequest)
+	rChan := make(chan controller.Event)
 	s.watchers.Store(uuid.New().String(), stopWatcher(rChan, watcher.Stop))
 
 	go func() {
@@ -101,7 +101,7 @@ func (s *k8s) Deny(ctx context.Context, r *certificatesv1.CertificateSigningRequ
 	return err
 }
 
-func stopWatcher(rChan chan *certificatesv1.CertificateSigningRequest, stopWatchers ...func()) func() {
+func stopWatcher(rChan chan controller.Event, stopWatchers ...func()) func() {
 	return func() {
 		for _, sw := range stopWatchers {
 			sw()

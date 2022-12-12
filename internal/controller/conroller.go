@@ -13,12 +13,14 @@ import (
 	v1 "k8s.io/api/certificates/v1"
 )
 
+type Event *v1.CertificateSigningRequest
+
 type cloud interface {
 	GetInstanceAddresses(ctx context.Context, instanceName string) ([]net.IP, error)
 }
 
 type k8s interface {
-	CertificateSigningRequestsChan() (<-chan *v1.CertificateSigningRequest, error)
+	CertificateSigningRequestsChan() (<-chan Event, error)
 	Approve(ctx context.Context, r *v1.CertificateSigningRequest) error
 	Deny(ctx context.Context, r *v1.CertificateSigningRequest) error
 	Stop()
