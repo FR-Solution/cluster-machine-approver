@@ -62,15 +62,13 @@ func TestApprove(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	t.Run("with approve", func(t *testing.T) {
-		go func() {
-			err = ctrl.Start()
-			require.NoError(t, err)
-		}()
-		certificateSigningRequestsChan <- testCertificateSigningRequest
+	go func() {
+		err = ctrl.Start()
+		require.NoError(t, err)
+	}()
+	certificateSigningRequestsChan <- testCertificateSigningRequest
 
-		close(certificateSigningRequestsChan)
-	})
+	close(certificateSigningRequestsChan)
 }
 
 func TestDeny(t *testing.T) {
@@ -112,15 +110,78 @@ func TestDeny(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	t.Run("with deny", func(t *testing.T) {
-		go func() {
-			err = ctrl.Start()
-			require.NoError(t, err)
-		}()
-		certificateSigningRequestsChan <- testCertificateSigningRequest
+	go func() {
+		err = ctrl.Start()
+		require.NoError(t, err)
+	}()
+	certificateSigningRequestsChan <- testCertificateSigningRequest
 
-		close(certificateSigningRequestsChan)
-	})
+	close(certificateSigningRequestsChan)
+}
+
+func TestWorkflow(t *testing.T) {
+	testRegexp := "system:node:(.[^ ]*)"
+
+	testIPSetApprove := []net.IP{
+		net.ParseIP("123.123.123.123"),
+		net.ParseIP("124.124.124.124"),
+		net.ParseIP("125.125.125.125"),
+	}
+
+	testVirtualMachineApproveName := "test-approve-1-virtual-name"
+	testCertificateSigningRequestApprove := testCSR(t, fmt.Sprintf("system:node:%s", testVirtualMachineApproveName), testIPSetApprove)
+
+	testIPSetDeny := []net.IP{
+		net.ParseIP("123.123.123.123"),
+		net.ParseIP("124.124.124.124"),
+		net.ParseIP("125.125.125.125"),
+		net.ParseIP("126.126.126.126"),
+	}
+
+	testVirtualMachineDenyName := "test-deny-virtual-name"
+	testCertificateSigningRequestDeny := testCSR(t, fmt.Sprintf("system:node:%s", testVirtualMachineDenyName), testIPSetDeny)
+
+	cloudMock := mocks.NewCloud(t)
+
+	cloudMock.On("GetInstanceAddresses", testVirtualMachineApproveName).
+		Return(testIPSetApprove, nilError)
+
+	cloudMock.On("GetInstanceAddresses", testVirtualMachineDenyName).
+		Return(testIPSetApprove, nilError)
+
+	k8sMock := mocks.NewK8s(t)
+	certificateSigningRequestsChan := make(chan controller.Event)
+	var certificateSigningRequestsOutChan <-chan controller.Event = certificateSigningRequestsChan
+
+	k8sMock.On("CertificateSigningRequestsChan").
+		Return(certificateSigningRequestsOutChan, nilError)
+	k8sMock.On("Deny", testCertificateSigningRequestDeny).
+		Return(nilError)
+	k8sMock.On("Approve", testCertificateSigningRequestApprove).
+		Return(nilError)
+
+	ctrl, err := controller.New(
+		k8sMock,
+		cloudMock,
+		testRegexp,
+	)
+	require.NoError(t, err)
+
+	go func() {
+		err = ctrl.Start()
+		require.NoError(t, err)
+	}()
+	certificateSigningRequestsChan <- testCertificateSigningRequestApprove
+	certificateSigningRequestsChan <- testCertificateSigningRequestDeny
+
+	certificateSigningRequestsChan <- testCertificateSigningRequestApprove
+	certificateSigningRequestsChan <- testCertificateSigningRequestApprove
+
+	certificateSigningRequestsChan <- testCertificateSigningRequestDeny
+	certificateSigningRequestsChan <- testCertificateSigningRequestDeny
+	certificateSigningRequestsChan <- testCertificateSigningRequestApprove
+
+	close(certificateSigningRequestsChan)
 }
 
 func testCSR(t *testing.T, testCommonName string, testIPSet []net.IP) *v1.CertificateSigningRequest {
