@@ -70,7 +70,7 @@ func (s *controller) Start() error {
 				logger.Error("approve_request", zap.Error(err))
 			}
 		} else {
-			logger.Debug("deny_request", zap.String("name", r.Name))
+			logger.Debug("deny_request")
 			err := s.k8s.Deny(ctx, r)
 			if err != nil {
 				logger.Error("deny_request", zap.Error(err))
